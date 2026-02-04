@@ -659,6 +659,10 @@
     const TURN_SECONDS = 20;
     const socket = io();
     let cowrieInterval = null;
+    const clientContext = {
+      roomId: null,
+      playerName: null
+    };
 
     function keyOf(coord) {
       return `${coord[0]},${coord[1]}`;
@@ -1238,6 +1242,7 @@
         alert("Please enter your name first.");
         return null;
       }
+      clientContext.playerName = name;
       return name;
     }
 
@@ -1254,6 +1259,7 @@
       const existingRoom = roomId || typedRoom || getRoomFromUrl() || prompt("Enter room code:");
       if (!existingRoom) return;
       roomId = existingRoom.toUpperCase();
+      clientContext.roomId = roomId;
       roomInput.value = roomId;
       socket.emit("join-room", { roomId, name });
     });
@@ -1285,6 +1291,7 @@
 
     socket.on("room-created", ({ roomId: createdId, hostId }) => {
       roomId = createdId;
+      clientContext.roomId = roomId;
       isHost = socket.id === hostId;
       const url = new URL(window.location.href);
       url.searchParams.set("room", roomId);
@@ -1296,6 +1303,7 @@
 
     socket.on("room-joined", ({ roomId: joinedId, hostId }) => {
       roomId = joinedId;
+      clientContext.roomId = roomId;
       isHost = socket.id === hostId;
       roomCodeEl.textContent = `Room: ${roomId}`;
       roomInput.value = roomId;
@@ -1305,6 +1313,7 @@
     socket.on("join-error", ({ message }) => {
       lobbyStatusEl.textContent = message;
       roomId = null;
+      clientContext.roomId = null;
     });
 
     socket.on("lobby-update", payload => {
@@ -1373,6 +1382,22 @@
     }
     lobbyOnlyPanel.classList.remove("hidden");
     gameSections.forEach(section => section.classList.add("hidden"));
+
+    window.addEventListener("error", event => {
+      socket.emit("client-error", {
+        message: event.message,
+        stack: event.error ? event.error.stack : null,
+        context: clientContext
+      });
+    });
+
+    window.addEventListener("unhandledrejection", event => {
+      socket.emit("client-error", {
+        message: event.reason ? String(event.reason) : "unhandledrejection",
+        stack: event.reason && event.reason.stack ? event.reason.stack : null,
+        context: clientContext
+      });
+    });
   </script>
 </body>
 </html>

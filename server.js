@@ -12,6 +12,17 @@ app.use(express.static("public"));
 
 const rooms = new Map();
 const MAX_PLAYERS = 4;
+const metrics = {
+  startedAt: Date.now(),
+  connections: 0,
+  activeSockets: 0,
+  roomsCreated: 0,
+  gamesStarted: 0,
+  rolls: 0,
+  moves: 0,
+  joinErrors: 0,
+  clientErrors: 0
+};
 
 function makeRoomId() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -34,6 +45,7 @@ function createRoom(hostSocketId, hostName) {
   };
   room.players.push({ id: hostSocketId, name: hostName });
   rooms.set(roomId, room);
+  metrics.roomsCreated += 1;
   return room;
 }
 
@@ -46,6 +58,10 @@ function findRoomBySocket(socketId) {
 }
 
 io.on("connection", socket => {
+  metrics.connections += 1;
+  metrics.activeSockets += 1;
+  console.log(`[connect] ${socket.id}`);
+
   socket.on("create-room", ({ name }) => {
     if (!name) return;
     const room = createRoom(socket.id, name);
@@ -62,14 +78,17 @@ io.on("connection", socket => {
   socket.on("join-room", ({ roomId, name }) => {
     const room = rooms.get(roomId);
     if (!room) {
+      metrics.joinErrors += 1;
       socket.emit("join-error", { message: "Room not found." });
       return;
     }
     if (room.started) {
+      metrics.joinErrors += 1;
       socket.emit("join-error", { message: "Game already started." });
       return;
     }
     if (room.players.length >= MAX_PLAYERS) {
+      metrics.joinErrors += 1;
       socket.emit("join-error", { message: "Game is full." });
       return;
     }
@@ -92,6 +111,7 @@ io.on("connection", socket => {
     if (socket.id !== room.hostId) return;
     room.started = true;
     room.currentIndex = 0;
+    metrics.gamesStarted += 1;
     io.to(room.id).emit("game-started", {
       roomId: room.id,
       players: room.players,
@@ -114,6 +134,7 @@ io.on("connection", socket => {
     const downCount = shells.filter(Boolean).length;
     const roll = downCount === 0 ? 8 : (downCount === 4 ? 4 : downCount);
 
+    metrics.rolls += 1;
     io.to(room.id).emit("roll-result", { roll, playerId: socket.id });
   });
 
@@ -124,6 +145,7 @@ io.on("connection", socket => {
     if (!room.started) return;
     if (idx !== room.currentIndex) return;
 
+    metrics.moves += 1;
     io.to(room.id).emit("move-made", { move, playerId: socket.id });
   });
 
@@ -136,7 +158,16 @@ io.on("connection", socket => {
     io.to(room.id).emit("turn-advanced", { currentIndex: room.currentIndex });
   });
 
+  socket.on("client-error", ({ message, stack, context }) => {
+    metrics.clientErrors += 1;
+    console.log(`[client-error] ${socket.id} ${message || "unknown"}`);
+    if (stack) console.log(stack);
+    if (context) console.log(`[client-context] ${JSON.stringify(context)}`);
+  });
+
   socket.on("disconnect", () => {
+    metrics.activeSockets = Math.max(0, metrics.activeSockets - 1);
+    console.log(`[disconnect] ${socket.id}`);
     const found = findRoomBySocket(socket.id);
     if (!found) return;
     const { room } = found;
@@ -158,6 +189,19 @@ io.on("connection", socket => {
       started: room.started
     });
     io.to(room.id).emit("turn-advanced", { currentIndex: room.currentIndex });
+  });
+});
+
+app.get("/health", (_req, res) => {
+  res.json({ ok: true, uptime: Math.floor((Date.now() - metrics.startedAt) / 1000) });
+});
+
+app.get("/metrics", (_req, res) => {
+  res.json({
+    ...metrics,
+    roomsActive: rooms.size,
+    playersActive: Array.from(rooms.values()).reduce((sum, r) => sum + r.players.length, 0),
+    uptimeSeconds: Math.floor((Date.now() - metrics.startedAt) / 1000)
   });
 });
 
