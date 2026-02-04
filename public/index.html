@@ -1372,6 +1372,14 @@
       updateUI();
     });
 
+    socket.on("connect_error", error => {
+      socket.emit("client-error", {
+        message: `connect_error: ${error.message || "unknown"}`,
+        stack: error.stack || null,
+        context: clientContext
+      });
+    });
+
     createBoard();
     updateUI();
     stopCowrieAnimation();

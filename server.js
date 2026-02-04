@@ -165,9 +165,9 @@ io.on("connection", socket => {
     if (context) console.log(`[client-context] ${JSON.stringify(context)}`);
   });
 
-  socket.on("disconnect", () => {
+  socket.on("disconnect", (reason) => {
     metrics.activeSockets = Math.max(0, metrics.activeSockets - 1);
-    console.log(`[disconnect] ${socket.id}`);
+    console.log(`[disconnect] ${socket.id} (${reason})`);
     const found = findRoomBySocket(socket.id);
     if (!found) return;
     const { room } = found;
