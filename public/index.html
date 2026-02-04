@@ -1023,8 +1023,9 @@
             });
 
             if (opponentsHere.length === 1 && samePlayerCount === 1) {
-              opponentsHere[0].segment = "yard";
-              opponentsHere[0].index = null;
+              opponentsHere[0].segment = "outer";
+              opponentsHere[0].index = 0;
+              opponentsHere[0].closed = true;
               killed = true;
             }
           });
