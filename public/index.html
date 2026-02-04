@@ -1,0 +1,1378 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ashta Chakkan (Chowka Bhara) - Classic Board</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600&family=Work+Sans:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f7f2e9;
+      --ink: #1e1c18;
+      --panel: #fff7e6;
+      --board: #f1dfc3;
+      --accent: #c2562d;
+      --grid: #7a5c41;
+      --safe: #ffd4a3;
+      --home: #f6b3a3;
+      --shadow: rgba(30, 28, 24, 0.18);
+      --red: #c43d3d;
+      --blue: #2563eb;
+      --green: #1f8a58;
+      --yellow: #d99a1f;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Work Sans", "Trebuchet MS", sans-serif;
+      color: var(--ink);
+      background: radial-gradient(circle at top left, #fff7df 0%, #f7f2e9 45%, #f0e4cf 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+    }
+
+    .app {
+      width: min(1100px, 100%);
+      display: grid;
+      grid-template-columns: minmax(280px, 1fr) minmax(360px, 1.4fr);
+      gap: 24px;
+      align-items: start;
+    }
+
+    header {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 12px;
+    }
+
+    h1 {
+      font-family: "Unbounded", "Work Sans", sans-serif;
+      font-size: clamp(1.5rem, 2.6vw, 2.2rem);
+      margin: 0;
+      letter-spacing: 0.02em;
+    }
+
+    .subtitle {
+      font-size: 0.85rem;
+      color: #4f4031;
+      max-width: 520px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 2px solid var(--grid);
+      border-radius: 18px;
+      padding: 14px;
+      box-shadow: 0 12px 25px var(--shadow);
+    }
+
+    .board-wrap {
+      background: var(--board);
+      border: 6px double var(--grid);
+      border-radius: 18px;
+      padding: 16px;
+      position: relative;
+      box-shadow: 0 16px 30px var(--shadow);
+    }
+
+    .board-wrap .player-list {
+      margin-top: 14px;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      grid-template-rows: repeat(5, 1fr);
+      gap: 4px;
+      aspect-ratio: 1 / 1;
+      width: min(520px, 90vw);
+      margin: 0 auto;
+    }
+
+    .cell {
+      background: #fdf5e6;
+      border: 2px solid var(--grid);
+      border-radius: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 6px;
+      position: relative;
+      min-height: 48px;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .cell.stack {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+      place-items: center;
+      gap: 2px;
+      padding: 4px;
+    }
+
+    .cell.stack .token {
+      width: 18px;
+      height: 24px;
+      font-size: 0.6rem;
+    }
+
+    .cell.safe {
+      background:
+        linear-gradient(45deg, transparent 49.5%, rgba(122, 92, 65, 0.4) 50%, transparent 50.5%),
+        linear-gradient(-45deg, transparent 49.5%, rgba(122, 92, 65, 0.4) 50%, transparent 50.5%),
+        var(--safe);
+    }
+
+    .cell.safe.stack {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      place-items: center;
+      padding: 10px;
+    }
+
+    .cell.safe.stack .token {
+      width: 16px;
+      height: 22px;
+      font-size: 0.55rem;
+    }
+
+    .cell.safe.stack .token:nth-child(1) { grid-row: 1; grid-column: 2; } /* top */
+    .cell.safe.stack .token:nth-child(2) { grid-row: 2; grid-column: 1; } /* left */
+    .cell.safe.stack .token:nth-child(3) { grid-row: 2; grid-column: 3; } /* right */
+    .cell.safe.stack .token:nth-child(4) { grid-row: 3; grid-column: 2; } /* bottom */
+
+    .cell.center {
+      background: var(--home);
+      font-weight: 600;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .cell.highlight {
+      box-shadow: inset 0 0 0 3px var(--accent);
+      transform: translateY(-1px);
+    }
+
+    .token {
+      width: 22px;
+      height: 30px;
+      border-radius: 10px 10px 6px 6px;
+      border: 2px solid rgba(0, 0, 0, 0.25);
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-size: 0.7rem;
+      cursor: pointer;
+      position: relative;
+      padding-top: 6px;
+    }
+
+    .token::before {
+      content: "";
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      top: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: inherit;
+      border: 2px solid rgba(0, 0, 0, 0.25);
+      box-shadow: 0 2px 0 rgba(0, 0, 0, 0.15);
+    }
+
+    .token::after {
+      content: "";
+      position: absolute;
+      width: 18px;
+      height: 6px;
+      border-radius: 6px;
+      bottom: -4px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.12);
+    }
+
+    .token.red { background: var(--red); }
+    .token.blue { background: var(--blue); }
+    .token.green { background: var(--green); }
+    .token.yellow { background: var(--yellow); color: #2d200e; }
+
+    .token.disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .highlight-token {
+      box-shadow: 0 0 0 3px rgba(194, 86, 45, 0.6);
+      transform: translateY(-1px);
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .lobby-only {
+      display: grid;
+      gap: 16px;
+      max-width: 420px;
+      width: 100%;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .lobby {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px dashed var(--grid);
+      background: #fffdf6;
+    }
+
+    .lobby label {
+      font-size: 0.9rem;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-weight: 600;
+    }
+
+    .lobby input,
+    .lobby select {
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--grid);
+      background: #fff;
+      font-weight: 600;
+    }
+
+    .lobby .row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .lobby .row button {
+      flex: 1;
+    }
+
+    .lobby .status {
+      font-size: 0.85rem;
+      color: #5a4b3c;
+      line-height: 1.4;
+    }
+
+    .room-pill {
+      font-size: 0.85rem;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--grid);
+      background: #fff;
+    }
+
+    .stat {
+      display: flex;
+      justify-content: space-between;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .timer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: #fff;
+      border: 1px solid var(--grid);
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .timer span:last-child {
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.06em;
+    }
+
+    .pill {
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #fff;
+      border: 1px solid var(--grid);
+      font-size: 0.85rem;
+    }
+
+    button {
+      border: none;
+      padding: 10px 14px;
+      font-weight: 600;
+      border-radius: 12px;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: 0 8px 16px rgba(194, 86, 45, 0.25);
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .move-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .move-options button {
+      background: #3c6e5c;
+      box-shadow: 0 8px 16px rgba(40, 80, 67, 0.25);
+    }
+
+    .roll-value {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .roll-value.rolling {
+      animation: rollPulse 0.6s ease-in-out infinite;
+    }
+
+    .roll-value.rolling::after {
+      content: "● ● ●";
+      font-size: 0.65rem;
+      letter-spacing: 0.2em;
+      opacity: 0.6;
+      animation: dots 0.6s ease-in-out infinite;
+    }
+
+    .cowries {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 6px 4px;
+      min-height: 28px;
+    }
+
+    .cowrie-value {
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 36px;
+      height: 28px;
+      border-radius: 999px;
+      background: #fff;
+      border: 1px solid var(--grid);
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+
+    .cowrie {
+      width: 34px;
+      height: 22px;
+      transform: rotate(0deg);
+      transition: transform 0.2s ease;
+      filter: drop-shadow(0 2px 2px rgba(60, 38, 18, 0.35));
+    }
+
+    .cowrie .shell-body {
+      fill: url(#cowrieGrad);
+      stroke: #a77b52;
+      stroke-width: 2.5;
+    }
+
+    .cowrie .shell-ridge {
+      stroke: rgba(255, 255, 255, 0.65);
+      stroke-width: 2;
+      stroke-linecap: round;
+    }
+
+    .cowrie .shell-shadow {
+      fill: rgba(122, 76, 44, 0.2);
+    }
+
+    .cowrie .shell-slit {
+      fill: #b36a3e;
+      opacity: 0.2;
+      transition: opacity 0.2s ease;
+    }
+
+    .cowrie.open .shell-body {
+      fill: url(#cowrieGradOpen);
+    }
+
+    .cowrie.open .shell-slit {
+      fill: #6d361b;
+      opacity: 0.95;
+    }
+
+    .cowrie.closed {
+      transform: rotate(180deg);
+      filter: drop-shadow(0 -2px 2px rgba(60, 38, 18, 0.35));
+    }
+
+    .cowrie.closed .shell-body {
+      fill: url(#cowrieGradClosed);
+    }
+
+    .cowrie.closed .shell-slit {
+      opacity: 0;
+    }
+
+    .cowrie.open .shell-speckles { opacity: 0.2; }
+    .cowrie.closed .shell-speckles { opacity: 0.75; }
+
+    .cowrie.rolling {
+      animation: shellTumble 0.45s ease-in-out infinite;
+    }
+
+    @keyframes shellSpin {
+      0% { transform: rotate(0deg); }
+      50% { transform: rotate(20deg); }
+      100% { transform: rotate(0deg); }
+    }
+
+    @keyframes shellTumble {
+      0% { transform: rotate(0deg) translateY(0); }
+      35% { transform: rotate(12deg) translateY(-2px); }
+      70% { transform: rotate(-10deg) translateY(1px); }
+      100% { transform: rotate(0deg) translateY(0); }
+    }
+
+    @keyframes rollPulse {
+      0% { transform: translateY(0); }
+      50% { transform: translateY(-2px); }
+      100% { transform: translateY(0); }
+    }
+
+    @keyframes dots {
+      0% { letter-spacing: 0.2em; }
+      50% { letter-spacing: 0.45em; }
+      100% { letter-spacing: 0.2em; }
+    }
+
+    .legend {
+      font-size: 0.85rem;
+      color: #5a4b3c;
+      line-height: 1.4;
+    }
+
+    .legend strong { color: #2f241a; }
+
+    .toggles {
+      display: grid;
+      gap: 8px;
+    }
+
+    .toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.9rem;
+      background: #fff;
+      border: 1px solid var(--grid);
+      border-radius: 12px;
+      padding: 6px 8px;
+    }
+
+    @media (max-width: 900px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+      .board {
+        width: min(90vw, 520px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app" id="appRoot">
+    <header>
+      <div>
+        <h1>Ashta Chakkan</h1>
+        <div class="subtitle">Classic Chowka Bhara rules with cowrie-shell rolls, safe crosses, and a full outer-to-inner race.</div>
+      </div>
+      <div class="pill" id="turnIndicator">Turn 1</div>
+    </header>
+
+    <section class="panel lobby-only" id="lobbyOnlyPanel">
+      <div class="lobby" id="lobbyPanel">
+        <label>
+          Your name
+          <input id="playerName" type="text" placeholder="Enter your name" />
+        </label>
+        <label>
+          Room code
+          <input id="roomInput" type="text" placeholder="e.g., A46E7" />
+        </label>
+        <div class="row">
+          <button id="createRoomButton">Create Game</button>
+          <button id="joinRoomButton">Join Game</button>
+        </div>
+        <div class="row">
+          <span class="room-pill" id="roomCode">Room: -</span>
+          <button id="copyLinkButton">Copy Link</button>
+        </div>
+        <button id="startButton" disabled>Start Game</button>
+        <div class="status" id="lobbyStatus">Create a room or join one to begin.</div>
+      </div>
+    </section>
+
+    <section class="panel controls hidden" data-game>
+      <div class="stat">
+        <span>Current Player</span>
+        <span id="currentPlayerLabel"></span>
+      </div>
+      <div class="stat">
+        <span>Roll</span>
+        <span id="rollValue" class="roll-value">-</span>
+      </div>
+      <div class="cowries" id="cowries">
+        <span class="cowrie-value" id="lastRoll">-</span>
+      </div>
+      <div class="timer">
+        <span>Turn Timer</span>
+        <span id="timerValue">20s</span>
+      </div>
+      <button id="rollButton">Roll Cowries</button>
+      <div class="move-options" id="moveOptions"></div>
+      <div class="toggles">
+        <label class="toggle">
+          <input type="checkbox" id="soundToggle" checked />
+          Sound effects
+        </label>
+      </div>
+    </section>
+
+    <section class="board-wrap" data-game>
+      <div class="board" id="board"></div>
+    </section>
+
+    <section class="panel" data-game>
+      <div class="legend">
+        <strong>Rules snapshot</strong><br />
+        1. Count down-facing cowries: 1-3 by count, 4 when all down, 8 when all up. 4/8 grant another roll.<br />
+        2. On 4 or 8, either open a token (move 1 out of the safe square) or move an open token by 4/8, then roll again.<br />
+        3. Move anticlockwise on the outer ring, then clockwise on the inner ring, and finish in the center.<br />
+        4. You can enter the inner ring after your first capture. Crossed squares are safe.
+      </div>
+    </section>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const BOARD_SIZE = 5;
+    const center = [2, 2];
+    const safeSquares = new Set(["0,2", "2,4", "4,2", "2,0"]);
+
+    const basePlayers = [
+      { color: "red", start: [0, 2] },
+      { color: "blue", start: [2, 4] },
+      { color: "green", start: [4, 2] },
+      { color: "yellow", start: [2, 0] }
+    ];
+
+    let players = [];
+    let roomId = null;
+    let isHost = false;
+
+    function buildPerimeterClockwise(size, offset = 0) {
+      const max = size - 1 - offset;
+      const min = offset;
+      const path = [];
+      for (let c = min; c <= max; c++) path.push([min, c]);
+      for (let r = min + 1; r <= max; r++) path.push([r, max]);
+      for (let c = max - 1; c >= min; c--) path.push([max, c]);
+      for (let r = max - 1; r > min; r--) path.push([r, min]);
+      return path;
+    }
+
+    const outerClockwise = buildPerimeterClockwise(BOARD_SIZE, 0);
+    const outerAnti = [...outerClockwise].reverse();
+    const innerClockwise = buildPerimeterClockwise(BOARD_SIZE, 1);
+
+    const boardEl = document.getElementById("board");
+    const currentPlayerLabel = document.getElementById("currentPlayerLabel");
+    const rollValueEl = document.getElementById("rollValue");
+    const lastRollEl = document.getElementById("lastRoll");
+    const rollButton = document.getElementById("rollButton");
+    const moveOptionsEl = document.getElementById("moveOptions");
+    const logEl = null;
+    const turnIndicator = document.getElementById("turnIndicator");
+    const timerValueEl = document.getElementById("timerValue");
+    const soundToggle = document.getElementById("soundToggle");
+    const cowriesEl = document.getElementById("cowries");
+
+    const lobbyPanel = document.getElementById("lobbyPanel");
+    const lobbyOnlyPanel = document.getElementById("lobbyOnlyPanel");
+    const playerNameInput = document.getElementById("playerName");
+    const roomInput = document.getElementById("roomInput");
+    const createRoomButton = document.getElementById("createRoomButton");
+    const joinRoomButton = document.getElementById("joinRoomButton");
+    const copyLinkButton = document.getElementById("copyLinkButton");
+    const roomCodeEl = document.getElementById("roomCode");
+    const lobbyStatusEl = document.getElementById("lobbyStatus");
+    const startButton = document.getElementById("startButton");
+    const gameSections = document.querySelectorAll("[data-game]");
+
+    const state = {
+      currentPlayerIndex: 0,
+      turn: 1,
+      roll: null,
+      awaitingMove: false,
+      tokens: {},
+      hasKill: {},
+      consecutiveBonus: 0,
+      lastRoll: null,
+      timerRemaining: 20,
+      timerId: null,
+      audioContext: null,
+      gameStarted: false
+    };
+
+    const TURN_SECONDS = 20;
+    const socket = io();
+    let cowrieInterval = null;
+
+    function keyOf(coord) {
+      return `${coord[0]},${coord[1]}`;
+    }
+
+    function coordToInnerStart(coord) {
+      const [r, c] = coord;
+      if (r === 0) return [1, c];
+      if (r === 4) return [3, c];
+      if (c === 0) return [r, 1];
+      if (c === 4) return [r, 3];
+      return [2,2];
+    }
+
+    function rotatePath(path, startCoord) {
+      const startKey = keyOf(startCoord);
+      const idx = path.findIndex(coord => keyOf(coord) === startKey);
+      if (idx === -1) return [...path];
+      return [...path.slice(idx), ...path.slice(0, idx)];
+    }
+
+    function buildPlayerPaths(player) {
+      const outerPath = rotatePath(outerAnti, player.start);
+      const preStart = outerPath[outerPath.length - 1];
+      const innerStart = coordToInnerStart(preStart);
+      const innerPath = rotatePath(innerClockwise, innerStart);
+      return { outerPath, innerPath, preStart };
+    }
+
+    function initPlayers(serverPlayers) {
+      const slots = serverPlayers.length === 2
+        ? [0, 2]
+        : serverPlayers.length === 3
+          ? [0, 1, 2]
+          : [0, 1, 2, 3];
+      players = serverPlayers.map((p, idx) => {
+        const base = basePlayers[slots[idx]];
+        return {
+          id: p.id,
+          name: p.name,
+          color: base.color,
+          start: base.start,
+          paths: buildPlayerPaths(base)
+        };
+      });
+      state.tokens = {};
+      state.hasKill = {};
+      players.forEach(player => {
+        state.tokens[player.id] = Array.from({ length: 4 }, (_, i) => ({
+          id: `${player.id}-${i}`,
+          num: i,
+          segment: "outer",
+          index: 0,
+          closed: true
+        }));
+        state.hasKill[player.id] = false;
+      });
+    }
+
+    function createBoard() {
+      boardEl.innerHTML = "";
+      for (let r = 0; r < BOARD_SIZE; r++) {
+        for (let c = 0; c < BOARD_SIZE; c++) {
+          const cell = document.createElement("div");
+          cell.className = "cell";
+          cell.dataset.coord = `${r},${c}`;
+          if (safeSquares.has(`${r},${c}`)) {
+            cell.classList.add("safe");
+          }
+          if (r === center[0] && c === center[1]) {
+            cell.classList.add("center");
+            cell.textContent = "Home";
+          }
+          boardEl.appendChild(cell);
+        }
+      }
+    }
+
+    function log(message) {}
+
+    function currentPlayer() {
+      return players[state.currentPlayerIndex];
+    }
+
+    function isMyTurn() {
+      const player = currentPlayer();
+      return player && player.id === socket.id;
+    }
+
+    function ensureAudio() {
+      if (!soundToggle.checked) return null;
+      if (!state.audioContext) {
+        state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      return state.audioContext;
+    }
+
+    function playTone(freq, duration = 0.12) {
+      const ctx = ensureAudio();
+      if (!ctx) return;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = freq;
+      osc.type = "triangle";
+      gain.gain.value = 0.08;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+      osc.stop(ctx.currentTime + duration);
+    }
+
+    function renderCowries(pattern) {
+      const valueEl = document.getElementById("lastRoll");
+      cowriesEl.innerHTML = "";
+      pattern.forEach(open => {
+        const wrapper = document.createElement("div");
+        const stateClass = open ? "open" : "closed";
+        wrapper.innerHTML = `
+          <svg class="cowrie ${stateClass}" viewBox="0 0 120 70" aria-hidden="true">
+            <defs>
+              <linearGradient id="cowrieGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#fff8eb"/>
+                <stop offset="50%" stop-color="#f2ddc3"/>
+                <stop offset="100%" stop-color="#d5ae86"/>
+              </linearGradient>
+              <linearGradient id="cowrieGradOpen" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#fcebd6"/>
+                <stop offset="55%" stop-color="#e5c7a7"/>
+                <stop offset="100%" stop-color="#c79068"/>
+              </linearGradient>
+              <linearGradient id="cowrieGradClosed" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#fff4e3"/>
+                <stop offset="55%" stop-color="#edd3b3"/>
+                <stop offset="100%" stop-color="#cfa07b"/>
+              </linearGradient>
+              <radialGradient id="cowrieShine" cx="35%" cy="25%" r="60%">
+                <stop offset="0%" stop-color="rgba(255,255,255,0.95)"/>
+                <stop offset="70%" stop-color="rgba(255,255,255,0.0)"/>
+              </radialGradient>
+            </defs>
+            <path class="shell-body" d="M12 35 C12 16 34 6 60 6 C86 6 108 16 108 35 C108 54 86 64 60 64 C34 64 12 54 12 35 Z"/>
+            <path class="shell-shadow" d="M20 40 C30 52 90 52 100 40 C92 60 28 60 20 40 Z"/>
+            <path class="shell-ridge" d="M32 18 C42 10 78 10 88 18"/>
+            <path class="shell-ridge" d="M26 26 C40 18 80 18 94 26"/>
+            <path class="shell-ridge" d="M24 34 C40 28 80 28 96 34"/>
+            <path class="shell-slit" d="M34 35 C42 25 78 25 86 35 C78 45 42 45 34 35 Z"/>
+            <path d="M20 18 C30 8 50 6 60 6 C70 6 88 10 98 22" fill="url(#cowrieShine)" opacity="0.8"/>
+            <g class="shell-speckles" opacity="0.35" fill="#caa27a">
+              <circle cx="30" cy="20" r="1.3"/>
+              <circle cx="42" cy="14" r="1"/>
+              <circle cx="70" cy="16" r="1.1"/>
+              <circle cx="82" cy="22" r="1.2"/>
+              <circle cx="90" cy="30" r="1"/>
+              <circle cx="24" cy="30" r="1.1"/>
+            </g>
+          </svg>
+        `;
+        cowriesEl.appendChild(wrapper.firstElementChild);
+      });
+      cowriesEl.appendChild(valueEl);
+    }
+
+    function randomCowries() {
+      return Array.from({ length: 4 }, () => Math.random() < 0.5);
+    }
+
+    function patternForRoll(roll) {
+      // open = up-facing, closed = down-facing
+      if (roll === 8) return [true, true, true, true]; // all up
+      if (roll === 4) return [false, false, false, false]; // all down
+      const pattern = [true, true, true, true];
+      for (let i = 0; i < roll; i++) {
+        pattern[i] = false; // down-facing shells
+      }
+      return pattern;
+    }
+
+    function startCowrieAnimation() {
+      stopCowrieAnimation();
+      const tick = () => {
+        renderCowries(randomCowries());
+        cowriesEl.querySelectorAll(".cowrie").forEach(shell => shell.classList.add("rolling"));
+      };
+      tick();
+      cowrieInterval = setInterval(tick, 160);
+    }
+
+    function stopCowrieAnimation(roll) {
+      if (cowrieInterval) clearInterval(cowrieInterval);
+      cowrieInterval = null;
+      if (typeof roll === "number") {
+        renderCowries(patternForRoll(roll));
+      } else {
+        renderCowries([false, false, false, false]);
+      }
+    }
+
+    function getTokenCoord(player, token) {
+      if (token.segment === "outer") {
+        return player.paths.outerPath[token.index];
+      }
+      if (token.segment === "inner") {
+        return player.paths.innerPath[token.index];
+      }
+      return null;
+    }
+
+    function renderBoard(highlightMoves = []) {
+      const cells = boardEl.querySelectorAll(".cell");
+      cells.forEach(cell => {
+        cell.classList.remove("highlight");
+        cell.innerHTML = "";
+        const coord = cell.dataset.coord;
+        if (coord === `${center[0]},${center[1]}`) {
+          cell.textContent = "Home";
+        }
+        if (safeSquares.has(coord)) {
+          cell.classList.add("safe");
+        }
+      });
+
+      highlightMoves.forEach(coordKey => {
+        const cell = boardEl.querySelector(`.cell[data-coord='${coordKey}']`);
+        if (cell) cell.classList.add("highlight");
+      });
+
+      players.forEach(player => {
+        (state.tokens[player.id] || []).forEach(token => {
+          const coord = getTokenCoord(player, token);
+          if (!coord) return;
+          const cell = boardEl.querySelector(`.cell[data-coord='${coord[0]},${coord[1]}']`);
+          if (!cell) return;
+          const tokenEl = document.createElement("div");
+          tokenEl.className = `token ${player.color}`;
+          tokenEl.dataset.tokenId = token.id;
+          tokenEl.dataset.playerId = player.id;
+          tokenEl.textContent = token.num;
+          cell.appendChild(tokenEl);
+        });
+      });
+
+      boardEl.querySelectorAll(".cell").forEach(cell => {
+        const tokens = cell.querySelectorAll(".token");
+        if (tokens.length > 1) {
+          cell.classList.add("stack");
+        } else {
+          cell.classList.remove("stack");
+        }
+      });
+    }
+
+    function isSafe(coord) {
+      return safeSquares.has(keyOf(coord));
+    }
+
+    function findTokenById(playerId, tokenId) {
+      return (state.tokens[playerId] || []).find(t => t.id === tokenId);
+    }
+
+    function simulateMove(player, token, steps) {
+      const path = player.paths;
+      let segment = token.segment;
+      let index = token.index;
+      let hasKill = state.hasKill[player.id];
+      if (segment === "home") {
+        return null;
+      }
+
+      const actualSteps = token.closed ? 1 : steps;
+
+      for (let i = 0; i < actualSteps; i++) {
+        if (segment === "outer") {
+          const currentCoord = path.outerPath[index];
+          const isPreStart = keyOf(currentCoord) === keyOf(path.preStart);
+          if (isPreStart && hasKill) {
+            segment = "inner";
+            index = 0;
+          } else {
+            index = (index + 1) % path.outerPath.length;
+          }
+        } else if (segment === "inner") {
+          if (index === path.innerPath.length - 1) {
+            segment = "home";
+            index = null;
+          } else {
+            index += 1;
+          }
+        }
+      }
+
+      if (segment === "home") {
+        return { segment: "home", index: null };
+      }
+      return { segment, index };
+    }
+
+    function canMoveToken(player, token, steps) {
+      if (token.segment === "home") return false;
+      if (token.closed) return steps === 4 || steps === 8;
+      let segment = token.segment;
+      let index = token.index;
+      const path = player.paths;
+      let hasKill = state.hasKill[player.id];
+
+      for (let i = 0; i < steps; i++) {
+        if (segment === "outer") {
+          const currentCoord = path.outerPath[index];
+          const isPreStart = keyOf(currentCoord) === keyOf(path.preStart);
+          if (isPreStart && hasKill) {
+            segment = "inner";
+            index = 0;
+          } else {
+            index = (index + 1) % path.outerPath.length;
+          }
+        } else if (segment === "inner") {
+          if (index === path.innerPath.length - 1) {
+            segment = "home";
+            index = null;
+          } else {
+            index += 1;
+          }
+        }
+      }
+      return true;
+    }
+
+    function getMovableTokens(player, steps) {
+      return (state.tokens[player.id] || []).filter(token => canMoveToken(player, token, steps));
+    }
+
+    function performMove(player, token, steps) {
+      const next = simulateMove(player, token, steps);
+      if (!next) return { moved: false, killed: false, reachedHome: false };
+
+      token.segment = next.segment;
+      token.index = next.index;
+      if (token.closed) {
+        token.closed = false;
+      }
+
+      let killed = false;
+      let reachedHome = token.segment === "home";
+
+      const coord = getTokenCoord(player, token);
+      if (coord) {
+        if (!isSafe(coord)) {
+          const samePlayerCount = (state.tokens[player.id] || []).filter(t => {
+            const tCoord = getTokenCoord(player, t);
+            return tCoord && keyOf(tCoord) === keyOf(coord);
+          }).length;
+
+          players.forEach(other => {
+            if (other.id === player.id) return;
+            const opponentsHere = (state.tokens[other.id] || []).filter(otherToken => {
+              const otherCoord = getTokenCoord(other, otherToken);
+              return otherCoord && keyOf(otherCoord) === keyOf(coord);
+            });
+
+            if (opponentsHere.length === 1 && samePlayerCount === 1) {
+              opponentsHere[0].segment = "yard";
+              opponentsHere[0].index = null;
+              killed = true;
+            }
+          });
+        }
+      }
+
+      if (killed) {
+        state.hasKill[player.id] = true;
+      }
+
+      return { moved: true, killed, reachedHome };
+    }
+
+    function updateUI() {
+      const player = currentPlayer();
+      currentPlayerLabel.textContent = player ? player.name : "-";
+      rollValueEl.textContent = state.roll ?? "-";
+      turnIndicator.textContent = `Turn ${state.turn}`;
+      timerValueEl.textContent = `${state.timerRemaining}s`;
+      renderBoard();
+      rollButton.disabled = !state.gameStarted || !isMyTurn();
+    }
+
+    function clearMoves() {
+      moveOptionsEl.innerHTML = "";
+      renderBoard();
+    }
+
+    function checkWin(player) {
+      const allHome = (state.tokens[player.id] || []).every(t => t.segment === "home");
+      if (allHome) {
+        alert(`${player.name} wins!`);
+        log(`${player.name} has brought all tokens home.`);
+        rollButton.disabled = true;
+        stopTimer();
+      }
+    }
+
+    function highlightMoves(movable) {
+      const coords = movable.map(token => {
+        const next = simulateMove(currentPlayer(), token, state.roll);
+        if (!next || next.segment === "home") return null;
+        const coord = next.segment === "outer"
+          ? currentPlayer().paths.outerPath[next.index]
+          : currentPlayer().paths.innerPath[next.index];
+        return coord ? keyOf(coord) : null;
+      }).filter(Boolean);
+      renderBoard(coords);
+    }
+
+    function renderBoardWithTokenHints(clickableTokenIds) {
+      const coords = Array.from(clickableTokenIds).map(tokenId => {
+        const player = currentPlayer();
+        const token = findTokenById(player.id, tokenId);
+        if (!token) return null;
+        const next = simulateMove(player, token, state.roll);
+        if (!next || next.segment === "home") return null;
+        const coord = next.segment === "outer"
+          ? player.paths.outerPath[next.index]
+          : player.paths.innerPath[next.index];
+        return coord ? keyOf(coord) : null;
+      }).filter(Boolean);
+
+      renderBoard(coords);
+
+      boardEl.querySelectorAll(".token").forEach(el => {
+        const tokenId = el.dataset.tokenId;
+        const playerId = el.dataset.playerId;
+        if (playerId !== currentPlayer().id) return;
+        if (clickableTokenIds.has(tokenId)) {
+          el.classList.add("highlight-token");
+          el.addEventListener("click", onTokenClick);
+        }
+      });
+    }
+
+    function offerMoves() {
+      moveOptionsEl.innerHTML = "";
+      const player = currentPlayer();
+      const roll = state.roll;
+      if (!roll || !player || !isMyTurn()) return;
+
+      const clickableTokenIds = new Set();
+      const movable = getMovableTokens(player, roll);
+      if (movable.length > 0) {
+        highlightMoves(movable);
+        movable.forEach(token => {
+          clickableTokenIds.add(token.id);
+          const btn = document.createElement("button");
+          btn.textContent = token.closed ? `Open ${token.num} (move 1)` : `Move ${token.num} by ${roll}`;
+          btn.addEventListener("click", () => {
+            socket.emit("move-made", { move: { type: "move", tokenId: token.id } });
+          });
+          moveOptionsEl.appendChild(btn);
+        });
+      }
+
+      if (moveOptionsEl.children.length === 0) {
+        log(`${player.name} has no legal moves.`);
+        socket.emit("turn-advance", { nextIndex: (state.currentPlayerIndex + 1) % players.length });
+      }
+
+      renderBoardWithTokenHints(clickableTokenIds);
+    }
+
+    function onTokenClick(event) {
+      if (!state.roll || !state.gameStarted || !isMyTurn()) return;
+      const tokenId = event.currentTarget.dataset.tokenId;
+      const player = currentPlayer();
+      const token = findTokenById(player.id, tokenId);
+      if (!token) return;
+      if (!canMoveToken(player, token, state.roll)) return;
+      socket.emit("move-made", { move: { type: "move", tokenId } });
+    }
+
+    function applyMove(playerId, move) {
+      const player = players.find(p => p.id === playerId);
+      if (!player) return;
+      let result = { moved: false, killed: false, reachedHome: false };
+      if (move.type === "move") {
+        const token = findTokenById(player.id, move.tokenId);
+        if (!token) return;
+        const wasClosed = token.closed;
+        result = performMove(player, token, state.roll);
+        log(`${player.name} moves token ${token.num} by ${wasClosed ? 1 : state.roll}.`);
+        if (result.killed) {
+          log(`${player.name} captures an opponent and earns a bonus roll.`);
+          playTone(620, 0.16);
+        }
+        if (result.reachedHome) {
+          log(`${player.name} brought a token home.`);
+          playTone(520, 0.18);
+        }
+        playTone(340);
+      }
+      afterMove(result, playerId);
+    }
+
+    function afterMove(result, actingPlayerId) {
+      const player = players.find(p => p.id === actingPlayerId);
+      renderBoard();
+      if (player) checkWin(player);
+
+      const bonus = state.roll === 4 || state.roll === 8 || result.killed;
+      state.roll = null;
+      rollValueEl.textContent = "-";
+      clearMoves();
+
+      if (bonus) {
+        if (actingPlayerId === socket.id) {
+          rollButton.disabled = false;
+        }
+        return;
+      }
+
+      if (actingPlayerId === socket.id) {
+        const nextIndex = (state.currentPlayerIndex + 1) % players.length;
+        socket.emit("turn-advance", { nextIndex });
+      }
+    }
+
+    function stopTimer() {
+      if (state.timerId) clearInterval(state.timerId);
+      state.timerId = null;
+    }
+
+    function resetTimer() {
+      stopTimer();
+      state.timerRemaining = TURN_SECONDS;
+      timerValueEl.textContent = `${state.timerRemaining}s`;
+      state.timerId = setInterval(() => {
+        state.timerRemaining -= 1;
+        timerValueEl.textContent = `${state.timerRemaining}s`;
+        if (state.timerRemaining <= 0) {
+          stopTimer();
+          log("Turn timer expired.");
+        }
+      }, 1000);
+    }
+
+    function updateLobbyUI({ players: lobbyPlayers, hostId, started }) {
+      isHost = socket.id === hostId;
+      if (roomId) {
+        roomCodeEl.textContent = `Room: ${roomId}`;
+      }
+      lobbyStatusEl.textContent = started
+        ? "Game in progress."
+        : `Players joined: ${lobbyPlayers.length} / 4`;
+      startButton.disabled = !isHost || started || lobbyPlayers.length < 1;
+      createRoomButton.disabled = !!roomId;
+      joinRoomButton.disabled = !!roomId;
+      copyLinkButton.disabled = !roomId;
+
+      const lobbyMapped = lobbyPlayers.map((p, idx) => ({
+        id: p.id,
+        name: p.name,
+        color: basePlayers[idx] ? basePlayers[idx].color : "red",
+        start: basePlayers[idx] ? basePlayers[idx].start : [0, 2],
+        paths: buildPlayerPaths(basePlayers[idx] || basePlayers[0])
+      }));
+      players = lobbyMapped;
+      renderBoard();
+      lobbyOnlyPanel.classList.remove("hidden");
+      gameSections.forEach(section => section.classList.add("hidden"));
+    }
+
+    function getRoomFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("room");
+    }
+
+    function ensureName() {
+      const name = playerNameInput.value.trim();
+      if (!name) {
+        alert("Please enter your name first.");
+        return null;
+      }
+      return name;
+    }
+
+    createRoomButton.addEventListener("click", () => {
+      const name = ensureName();
+      if (!name) return;
+      socket.emit("create-room", { name });
+    });
+
+    joinRoomButton.addEventListener("click", () => {
+      const name = ensureName();
+      if (!name) return;
+      const typedRoom = roomInput.value.trim();
+      const existingRoom = roomId || typedRoom || getRoomFromUrl() || prompt("Enter room code:");
+      if (!existingRoom) return;
+      roomId = existingRoom.toUpperCase();
+      roomInput.value = roomId;
+      socket.emit("join-room", { roomId, name });
+    });
+
+    copyLinkButton.addEventListener("click", async () => {
+      if (!roomId) return;
+      const url = `${window.location.origin}?room=${roomId}`;
+      try {
+        await navigator.clipboard.writeText(url);
+        lobbyStatusEl.textContent = "Link copied to clipboard.";
+      } catch {
+        lobbyStatusEl.textContent = url;
+      }
+    });
+
+    startButton.addEventListener("click", () => {
+      if (!isHost) return;
+      socket.emit("start-game");
+    });
+
+    rollButton.addEventListener("click", () => {
+      if (!state.gameStarted || !isMyTurn() || state.roll != null) return;
+      rollValueEl.classList.add("rolling");
+      rollValueEl.textContent = "Rolling";
+      playTone(260);
+      startCowrieAnimation();
+      socket.emit("roll-request");
+    });
+
+    socket.on("room-created", ({ roomId: createdId, hostId }) => {
+      roomId = createdId;
+      isHost = socket.id === hostId;
+      const url = new URL(window.location.href);
+      url.searchParams.set("room", roomId);
+      window.history.replaceState({}, "", url.toString());
+      roomCodeEl.textContent = `Room: ${roomId}`;
+      roomInput.value = roomId;
+      lobbyStatusEl.textContent = "Room created. Share the link to invite players.";
+    });
+
+    socket.on("room-joined", ({ roomId: joinedId, hostId }) => {
+      roomId = joinedId;
+      isHost = socket.id === hostId;
+      roomCodeEl.textContent = `Room: ${roomId}`;
+      roomInput.value = roomId;
+      lobbyStatusEl.textContent = "Joined room. Waiting for host to start.";
+    });
+
+    socket.on("join-error", ({ message }) => {
+      lobbyStatusEl.textContent = message;
+      roomId = null;
+    });
+
+    socket.on("lobby-update", payload => {
+      updateLobbyUI(payload);
+    });
+
+    socket.on("game-started", ({ players: serverPlayers, currentIndex }) => {
+      initPlayers(serverPlayers);
+      state.gameStarted = true;
+      state.currentPlayerIndex = currentIndex;
+      state.turn = 1;
+      state.roll = null;
+      state.consecutiveBonus = 0;
+      lobbyStatusEl.textContent = "Game started!";
+      lobbyOnlyPanel.classList.add("hidden");
+      gameSections.forEach(section => section.classList.remove("hidden"));
+      resetTimer();
+      updateUI();
+      log("Game started.");
+    });
+
+    socket.on("roll-result", ({ roll, playerId }) => {
+      rollValueEl.classList.remove("rolling");
+      state.roll = roll;
+      stopCowrieAnimation(roll);
+      state.lastRoll = roll;
+      lastRollEl.textContent = roll;
+      if (roll === 4 || roll === 8) {
+        state.consecutiveBonus += 1;
+      } else {
+        state.consecutiveBonus = 0;
+      }
+      log(`${players.find(p => p.id === playerId)?.name || "Player"} rolled ${roll}.`);
+      playTone(300 + roll * 20);
+      if (playerId === socket.id) {
+        offerMoves();
+      }
+      rollButton.disabled = !isMyTurn();
+    });
+
+    socket.on("move-made", ({ move, playerId }) => {
+      applyMove(playerId, move);
+    });
+
+    socket.on("turn-advanced", ({ currentIndex }) => {
+      state.currentPlayerIndex = currentIndex;
+      state.turn += 1;
+      state.consecutiveBonus = 0;
+      state.roll = null;
+      rollValueEl.classList.remove("rolling");
+      rollValueEl.textContent = "-";
+      clearMoves();
+      stopCowrieAnimation(state.lastRoll);
+      resetTimer();
+      updateUI();
+    });
+
+    createBoard();
+    updateUI();
+    stopCowrieAnimation();
+
+    const urlRoom = getRoomFromUrl();
+    if (urlRoom) {
+      lobbyStatusEl.textContent = `Ready to join room ${urlRoom}.`;
+      roomInput.value = urlRoom.toUpperCase();
+    }
+    lobbyOnlyPanel.classList.remove("hidden");
+    gameSections.forEach(section => section.classList.add("hidden"));
+  </script>
+</body>
+</html>
