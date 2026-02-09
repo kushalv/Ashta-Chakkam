@@ -676,7 +676,8 @@
       localMode: false,
       localHumanId: "local-human",
       localAIId: "local-ai",
-      aiLevel: "medium"
+      aiLevel: "medium",
+      gameOver: false
     };
 
     const TURN_SECONDS = 20;
@@ -1038,6 +1039,53 @@
       return (state.tokens[player.id] || []).filter(token => canMoveToken(player, token, steps));
     }
 
+    function getOpenPairs(player) {
+      const byCoord = new Map();
+      (state.tokens[player.id] || []).forEach(token => {
+        if (token.closed) return;
+        const coord = getTokenCoord(player, token);
+        if (!coord) return;
+        const key = keyOf(coord);
+        if (!byCoord.has(key)) byCoord.set(key, []);
+        byCoord.get(key).push(token);
+      });
+      return Array.from(byCoord.entries())
+        .filter(([, tokens]) => tokens.length === 2)
+        .map(([coordKey, tokens]) => ({ coordKey, tokens }));
+    }
+
+    function canMovePair(player, tokens, steps) {
+      if (steps % 2 !== 0) return false;
+      if (tokens.some(t => t.closed)) return false;
+      const half = steps / 2;
+      const next = simulateMove(player, tokens[0], half);
+      if (!next || next.segment === "home") return true;
+      const nextCoord = next.segment === "outer"
+        ? player.paths.outerPath[next.index]
+        : player.paths.innerPath[next.index];
+      if (!nextCoord) return false;
+      if (isSafe(nextCoord)) return true;
+      // cannot capture: disallow if opponent occupies destination
+      return !players.some(other => {
+        if (other.id === player.id) return false;
+        return (state.tokens[other.id] || []).some(t => {
+          const coord = getTokenCoord(other, t);
+          return coord && keyOf(coord) === keyOf(nextCoord);
+        });
+      });
+    }
+
+    function performPairMove(player, tokens, steps) {
+      const half = steps / 2;
+      const next = simulateMove(player, tokens[0], half);
+      if (!next) return { moved: false };
+      tokens.forEach(token => {
+        token.segment = next.segment;
+        token.index = next.index;
+      });
+      return { moved: true, killed: false, reachedHome: next.segment === "home" };
+    }
+
     function performMove(player, token, steps) {
       const next = simulateMove(player, token, steps);
       if (!next) return { moved: false, killed: false, reachedHome: false };
@@ -1105,6 +1153,8 @@
         log(`${player.name} has brought all tokens home.`);
         rollButton.disabled = true;
         stopTimer();
+        state.gameOver = true;
+        state.gameStarted = false;
       }
     }
 
@@ -1154,6 +1204,19 @@
 
       const clickableTokenIds = new Set();
       const movable = getMovableTokens(player, roll);
+      const pairs = roll % 2 === 0 ? getOpenPairs(player) : [];
+
+      pairs.forEach(pair => {
+        if (!canMovePair(player, pair.tokens, roll)) return;
+        const nums = pair.tokens.map(t => t.num).sort((a, b) => a - b).join("&");
+        const btn = document.createElement("button");
+        btn.textContent = `Move pair ${nums} by ${roll / 2}`;
+        btn.addEventListener("click", () => {
+          submitMove({ type: "pair", tokenIds: pair.tokens.map(t => t.id) });
+        });
+        moveOptionsEl.appendChild(btn);
+      });
+
       if (movable.length > 0) {
         highlightMoves(movable);
         movable.forEach(token => {
@@ -1189,7 +1252,16 @@
       const player = players.find(p => p.id === playerId);
       if (!player) return;
       let result = { moved: false, killed: false, reachedHome: false };
-      if (move.type === "move") {
+      if (move.type === "pair") {
+        const tokens = move.tokenIds
+          .map(id => findTokenById(player.id, id))
+          .filter(Boolean);
+        if (tokens.length !== 2) return;
+        if (!canMovePair(player, tokens, state.roll)) return;
+        result = performPairMove(player, tokens, state.roll);
+        log(`${player.name} moves a pair by ${state.roll / 2}.`);
+        playTone(340);
+      } else if (move.type === "move") {
         const token = findTokenById(player.id, move.tokenId);
         if (!token) return;
         const wasClosed = token.closed;
@@ -1213,7 +1285,7 @@
       renderBoard();
       if (player) checkWin(player);
 
-      const bonus = state.roll === 4 || state.roll === 8 || result.killed;
+      const bonus = state.roll === 4 || state.roll === 8 || result.killed || result.reachedHome;
       state.roll = null;
       rollValueEl.textContent = "-";
       clearMoves();
@@ -1223,7 +1295,7 @@
           if (actingPlayerId === state.localHumanId) {
             rollButton.disabled = false;
           }
-          if (actingPlayerId === state.localAIId) {
+          if (actingPlayerId === state.localAIId && !state.gameOver) {
             setTimeout(() => localRoll(), 600);
           }
         } else if (actingPlayerId === socket.id) {
@@ -1306,6 +1378,7 @@
       const name = ensureName();
       if (!name) return;
       state.aiLevel = aiLevelSelect.value;
+      state.gameOver = false;
       state.localMode = true;
       roomId = null;
       clientContext.roomId = null;
@@ -1374,6 +1447,7 @@
     }
 
     function advanceTurn(nextIndex) {
+      if (state.gameOver) return;
       if (state.localMode) {
         state.currentPlayerIndex = nextIndex;
         state.turn += 1;
@@ -1394,7 +1468,7 @@
     }
 
     function localRoll() {
-      if (!state.gameStarted || currentPlayer().id !== state.localAIId) return;
+      if (!state.gameStarted || state.gameOver || currentPlayer().id !== state.localAIId) return;
       rollValueEl.classList.add("rolling");
       rollValueEl.textContent = "Rolling";
       startCowrieAnimation();
@@ -1469,7 +1543,7 @@
     }
 
     rollButton.addEventListener("click", () => {
-      if (!state.gameStarted || !isMyTurn() || state.roll != null) return;
+      if (!state.gameStarted || state.gameOver || !isMyTurn() || state.roll != null) return;
       rollValueEl.classList.add("rolling");
       rollValueEl.textContent = "Rolling";
       playTone(260);
@@ -1527,6 +1601,7 @@
 
     socket.on("game-started", ({ players: serverPlayers, currentIndex }) => {
       state.localMode = false;
+      state.gameOver = false;
       initPlayers(serverPlayers);
       state.gameStarted = true;
       state.currentPlayerIndex = currentIndex;
