@@ -1161,7 +1161,7 @@
           const btn = document.createElement("button");
           btn.textContent = token.closed ? `Open ${token.num} (move 1)` : `Move ${token.num} by ${roll}`;
           btn.addEventListener("click", () => {
-            socket.emit("move-made", { move: { type: "move", tokenId: token.id } });
+            submitMove({ type: "move", tokenId: token.id });
           });
           moveOptionsEl.appendChild(btn);
         });
