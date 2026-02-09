@@ -76,12 +76,15 @@
     }
 
     .board-wrap {
-      background: var(--board);
-      border: 6px double var(--grid);
-      border-radius: 18px;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.6), transparent 55%),
+        radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.5), transparent 55%),
+        var(--board);
+      border: 6px solid #6c4e35;
+      border-radius: 22px;
       padding: 16px;
       position: relative;
-      box-shadow: 0 16px 30px var(--shadow);
+      box-shadow: 0 18px 36px var(--shadow);
     }
 
     .board-wrap .player-list {
@@ -99,9 +102,9 @@
     }
 
     .cell {
-      background: #fdf5e6;
-      border: 2px solid var(--grid);
-      border-radius: 10px;
+      background: #fff7ec;
+      border: 2px solid #6f523a;
+      border-radius: 14px;
       display: flex;
       flex-wrap: wrap;
       align-items: center;
@@ -130,10 +133,14 @@
 
     .cell.safe {
       background:
-        linear-gradient(45deg, transparent 49.5%, rgba(122, 92, 65, 0.4) 50%, transparent 50.5%),
-        linear-gradient(-45deg, transparent 49.5%, rgba(122, 92, 65, 0.4) 50%, transparent 50.5%),
-        var(--safe);
+        linear-gradient(45deg, transparent 49.5%, rgba(90, 60, 40, 0.35) 50%, transparent 50.5%),
+        linear-gradient(-45deg, transparent 49.5%, rgba(90, 60, 40, 0.35) 50%, transparent 50.5%);
     }
+
+    .cell.safe.safe-red { background-color: #f6c1b8; }
+    .cell.safe.safe-blue { background-color: #c3d6ff; }
+    .cell.safe.safe-green { background-color: #c7e7d7; }
+    .cell.safe.safe-yellow { background-color: #fde0a8; }
 
     .cell.safe.stack {
       display: grid;
@@ -155,7 +162,7 @@
     .cell.safe.stack .token:nth-child(4) { grid-row: 3; grid-column: 2; } /* bottom */
 
     .cell.center {
-      background: var(--home);
+      background: linear-gradient(135deg, #f7b5a6, #f4a79a);
       font-weight: 600;
       font-size: 0.85rem;
       text-transform: uppercase;
@@ -179,6 +186,7 @@
       cursor: pointer;
       position: relative;
       padding-top: 6px;
+      background-image: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0) 55%);
     }
 
     .token::before {
@@ -535,6 +543,15 @@
           <button id="createRoomButton">Create Game</button>
           <button id="joinRoomButton">Join Game</button>
         </div>
+        <label>
+          AI difficulty
+          <select id="aiLevel">
+            <option value="easy">Easy</option>
+            <option value="medium" selected>Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </label>
+        <button id="singlePlayerButton">Single Player (vs AI)</button>
         <div class="row">
           <span class="room-pill" id="roomCode">Room: -</span>
           <button id="copyLinkButton">Copy Link</button>
@@ -635,6 +652,8 @@
     const roomInput = document.getElementById("roomInput");
     const createRoomButton = document.getElementById("createRoomButton");
     const joinRoomButton = document.getElementById("joinRoomButton");
+    const singlePlayerButton = document.getElementById("singlePlayerButton");
+    const aiLevelSelect = document.getElementById("aiLevel");
     const copyLinkButton = document.getElementById("copyLinkButton");
     const roomCodeEl = document.getElementById("roomCode");
     const lobbyStatusEl = document.getElementById("lobbyStatus");
@@ -653,7 +672,11 @@
       timerRemaining: 20,
       timerId: null,
       audioContext: null,
-      gameStarted: false
+      gameStarted: false,
+      localMode: false,
+      localHumanId: "local-human",
+      localAIId: "local-ai",
+      aiLevel: "medium"
     };
 
     const TURN_SECONDS = 20;
@@ -722,6 +745,14 @@
       });
     }
 
+    function safeClassForCoord(coordKey) {
+      if (coordKey === "0,2") return "safe-red";
+      if (coordKey === "2,4") return "safe-blue";
+      if (coordKey === "4,2") return "safe-green";
+      if (coordKey === "2,0") return "safe-yellow";
+      return "";
+    }
+
     function createBoard() {
       boardEl.innerHTML = "";
       for (let r = 0; r < BOARD_SIZE; r++) {
@@ -729,8 +760,11 @@
           const cell = document.createElement("div");
           cell.className = "cell";
           cell.dataset.coord = `${r},${c}`;
-          if (safeSquares.has(`${r},${c}`)) {
+          const coordKey = `${r},${c}`;
+          if (safeSquares.has(coordKey)) {
             cell.classList.add("safe");
+            const safeClass = safeClassForCoord(coordKey);
+            if (safeClass) cell.classList.add(safeClass);
           }
           if (r === center[0] && c === center[1]) {
             cell.classList.add("center");
@@ -749,7 +783,9 @@
 
     function isMyTurn() {
       const player = currentPlayer();
-      return player && player.id === socket.id;
+      if (!player) return false;
+      if (state.localMode) return player.id === state.localHumanId;
+      return player.id === socket.id;
     }
 
     function ensureAudio() {
@@ -841,6 +877,12 @@
       return pattern;
     }
 
+    function rollCowries() {
+      const shells = Array.from({ length: 4 }, () => Math.random() < 0.5);
+      const downCount = shells.filter(Boolean).length;
+      return downCount === 0 ? 8 : (downCount === 4 ? 4 : downCount);
+    }
+
     function startCowrieAnimation() {
       stopCowrieAnimation();
       const tick = () => {
@@ -882,6 +924,8 @@
         }
         if (safeSquares.has(coord)) {
           cell.classList.add("safe");
+          const safeClass = safeClassForCoord(coord);
+          if (safeClass) cell.classList.add(safeClass);
         }
       });
 
@@ -1125,7 +1169,7 @@
 
       if (moveOptionsEl.children.length === 0) {
         log(`${player.name} has no legal moves.`);
-        socket.emit("turn-advance", { nextIndex: (state.currentPlayerIndex + 1) % players.length });
+        advanceTurn((state.currentPlayerIndex + 1) % players.length);
       }
 
       renderBoardWithTokenHints(clickableTokenIds);
@@ -1138,7 +1182,7 @@
       const token = findTokenById(player.id, tokenId);
       if (!token) return;
       if (!canMoveToken(player, token, state.roll)) return;
-      socket.emit("move-made", { move: { type: "move", tokenId } });
+      submitMove({ type: "move", tokenId });
     }
 
     function applyMove(playerId, move) {
@@ -1178,13 +1222,14 @@
         if (actingPlayerId === socket.id) {
           rollButton.disabled = false;
         }
+        if (state.localMode && actingPlayerId === state.localAIId) {
+          setTimeout(() => localRoll(), 600);
+        }
         return;
       }
 
-      if (actingPlayerId === socket.id) {
-        const nextIndex = (state.currentPlayerIndex + 1) % players.length;
-        socket.emit("turn-advance", { nextIndex });
-      }
+      const nextIndex = (state.currentPlayerIndex + 1) % players.length;
+      advanceTurn(nextIndex);
     }
 
     function stopTimer() {
@@ -1253,6 +1298,41 @@
       socket.emit("create-room", { name });
     });
 
+    singlePlayerButton.addEventListener("click", () => {
+      const name = ensureName();
+      if (!name) return;
+      state.aiLevel = aiLevelSelect.value;
+      state.localMode = true;
+      roomId = null;
+      clientContext.roomId = null;
+      players = [
+        { id: state.localHumanId, name, ...basePlayers[0], paths: buildPlayerPaths(basePlayers[0]) },
+        { id: state.localAIId, name: "AI", ...basePlayers[2], paths: buildPlayerPaths(basePlayers[2]) }
+      ];
+      state.tokens = {};
+      state.hasKill = {};
+      players.forEach(player => {
+        state.tokens[player.id] = Array.from({ length: 4 }, (_, i) => ({
+          id: `${player.id}-${i}`,
+          num: i,
+          segment: "outer",
+          index: 0,
+          closed: true
+        }));
+        state.hasKill[player.id] = false;
+      });
+      state.gameStarted = true;
+      state.currentPlayerIndex = 0;
+      state.turn = 1;
+      state.roll = null;
+      state.consecutiveBonus = 0;
+      lastRollEl.textContent = "-";
+      lobbyOnlyPanel.classList.add("hidden");
+      gameSections.forEach(section => section.classList.remove("hidden"));
+      resetTimer();
+      updateUI();
+    });
+
     joinRoomButton.addEventListener("click", () => {
       const name = ensureName();
       if (!name) return;
@@ -1281,12 +1361,132 @@
       socket.emit("start-game");
     });
 
+    function submitMove(move) {
+      if (state.localMode) {
+        applyMove(state.localHumanId, move);
+        return;
+      }
+      socket.emit("move-made", { move });
+    }
+
+    function advanceTurn(nextIndex) {
+      if (state.localMode) {
+        state.currentPlayerIndex = nextIndex;
+        state.turn += 1;
+        state.consecutiveBonus = 0;
+        state.roll = null;
+        rollValueEl.classList.remove("rolling");
+        rollValueEl.textContent = "-";
+        clearMoves();
+        stopCowrieAnimation(state.lastRoll);
+        resetTimer();
+        updateUI();
+        if (currentPlayer().id === state.localAIId) {
+          setTimeout(() => localRoll(), 600);
+        }
+        return;
+      }
+      socket.emit("turn-advance", { nextIndex });
+    }
+
+    function localRoll() {
+      if (!state.gameStarted || currentPlayer().id !== state.localAIId) return;
+      rollValueEl.classList.add("rolling");
+      rollValueEl.textContent = "Rolling";
+      startCowrieAnimation();
+      setTimeout(() => {
+        const roll = rollCowries();
+        state.roll = roll;
+        rollValueEl.classList.remove("rolling");
+        stopCowrieAnimation(roll);
+        state.lastRoll = roll;
+        lastRollEl.textContent = roll;
+        if (roll === 4 || roll === 8) {
+          state.consecutiveBonus += 1;
+        } else {
+          state.consecutiveBonus = 0;
+        }
+        if (currentPlayer().id === state.localAIId) {
+          const move = chooseAIMove(roll);
+          if (!move) {
+            advanceTurn((state.currentPlayerIndex + 1) % players.length);
+          } else {
+            applyMove(state.localAIId, move);
+          }
+        }
+      }, 500);
+    }
+
+    function chooseAIMove(roll) {
+      const player = currentPlayer();
+      if (!player) return null;
+      const movable = getMovableTokens(player, roll);
+      if (movable.length === 0) return null;
+      if (state.aiLevel === "easy") {
+        const token = movable[Math.floor(Math.random() * movable.length)];
+        return { type: "move", tokenId: token.id };
+      }
+
+      const scored = movable.map(token => {
+        const next = simulateMove(player, token, roll);
+        const reachesHome = next && next.segment === "home";
+        const nextCoord = next && next.segment !== "home"
+          ? (next.segment === "outer" ? player.paths.outerPath[next.index] : player.paths.innerPath[next.index])
+          : null;
+        const safe = nextCoord ? isSafe(nextCoord) : false;
+        const capture = nextCoord
+          ? players.some(other => {
+              if (other.id === player.id) return false;
+              return (state.tokens[other.id] || []).some(t => {
+                const coord = getTokenCoord(other, t);
+                return coord && keyOf(coord) === keyOf(nextCoord);
+              });
+            })
+          : false;
+        const progress = token.closed ? 0 : token.index;
+        let score = 0;
+        if (capture) score += 50;
+        if (reachesHome) score += 40;
+        if (safe) score += 5;
+        score += progress;
+        return { token, score };
+      });
+
+      if (state.aiLevel === "medium") {
+        scored.sort((a, b) => b.score - a.score);
+        return { type: "move", tokenId: scored[0].token.id };
+      }
+
+      // hard: prefer capture > home > safe > progress, then random among top 2
+      scored.sort((a, b) => b.score - a.score);
+      const top = scored.slice(0, Math.min(2, scored.length));
+      const pick = top[Math.floor(Math.random() * top.length)];
+      return { type: "move", tokenId: pick.token.id };
+    }
+
     rollButton.addEventListener("click", () => {
       if (!state.gameStarted || !isMyTurn() || state.roll != null) return;
       rollValueEl.classList.add("rolling");
       rollValueEl.textContent = "Rolling";
       playTone(260);
       startCowrieAnimation();
+      if (state.localMode) {
+        setTimeout(() => {
+          const roll = rollCowries();
+          state.roll = roll;
+          rollValueEl.classList.remove("rolling");
+          stopCowrieAnimation(roll);
+          state.lastRoll = roll;
+          lastRollEl.textContent = roll;
+          if (roll === 4 || roll === 8) {
+            state.consecutiveBonus += 1;
+          } else {
+            state.consecutiveBonus = 0;
+          }
+          offerMoves();
+        }, 500);
+        return;
+      }
       socket.emit("roll-request");
     });
 
@@ -1322,6 +1522,7 @@
     });
 
     socket.on("game-started", ({ players: serverPlayers, currentIndex }) => {
+      state.localMode = false;
       initPlayers(serverPlayers);
       state.gameStarted = true;
       state.currentPlayerIndex = currentIndex;
