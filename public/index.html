@@ -1219,11 +1219,15 @@
       clearMoves();
 
       if (bonus) {
-        if (actingPlayerId === socket.id) {
+        if (state.localMode) {
+          if (actingPlayerId === state.localHumanId) {
+            rollButton.disabled = false;
+          }
+          if (actingPlayerId === state.localAIId) {
+            setTimeout(() => localRoll(), 600);
+          }
+        } else if (actingPlayerId === socket.id) {
           rollButton.disabled = false;
-        }
-        if (state.localMode && actingPlayerId === state.localAIId) {
-          setTimeout(() => localRoll(), 600);
         }
         return;
       }
