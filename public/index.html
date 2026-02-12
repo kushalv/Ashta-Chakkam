@@ -47,8 +47,10 @@
     }
 
     .app.lobby-mode {
-      grid-template-columns: minmax(280px, 520px);
-      justify-content: center;
+      grid-template-columns: 1fr;
+      justify-items: center;
+      width: min(520px, 100%);
+      gap: 16px;
     }
 
     header {
@@ -63,10 +65,24 @@
       justify-content: center;
       text-align: center;
       align-items: center;
+      width: 100%;
+    }
+
+    .app.lobby-mode header > div {
+      width: 100%;
     }
 
     .app.lobby-mode #turnIndicator {
       display: none;
+    }
+
+    .app.lobby-mode .subtitle {
+      max-width: none;
+    }
+
+    .app.lobby-mode #lobbyOnlyPanel {
+      width: 100%;
+      max-width: none;
     }
 
     h1 {
