@@ -529,6 +529,20 @@
       gap: 8px;
     }
 
+    .leave-game-wrap {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: flex-end;
+      margin-top: -8px;
+    }
+
+    .leave-btn {
+      background: #8f4a32;
+      box-shadow: 0 6px 12px rgba(50, 25, 14, 0.2);
+      padding: 8px 12px;
+      font-size: 0.9rem;
+    }
+
     .toggle {
       display: flex;
       align-items: center;
@@ -546,6 +560,13 @@
       }
       .board {
         width: min(90vw, 520px);
+      }
+      .leave-game-wrap {
+        justify-content: stretch;
+        margin-top: 0;
+      }
+      .leave-btn {
+        width: 100%;
       }
     }
   </style>
@@ -609,7 +630,6 @@
         <span id="timerValue">20s</span>
       </div>
       <button id="rollButton">Roll Cowries</button>
-      <button id="leaveGameButton" type="button">Leave Game</button>
       <div class="move-options" id="moveOptions"></div>
       <div class="toggles">
         <label class="toggle">
@@ -617,6 +637,10 @@
           Sound effects
         </label>
       </div>
+    </section>
+
+    <section class="leave-game-wrap hidden" data-game>
+      <button id="leaveGameButton" type="button" class="leave-btn">Leave Game</button>
     </section>
 
     <section class="board-wrap" data-game>
@@ -1733,6 +1757,8 @@
     });
 
     leaveGameButton.addEventListener("click", () => {
+      const shouldLeave = window.confirm("Leave this game and return to the start page?");
+      if (!shouldLeave) return;
       returnToStartPage({
         message: "You left the game.",
         emitLeave: true
