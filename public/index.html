@@ -46,12 +46,27 @@
       align-items: start;
     }
 
+    .app.lobby-mode {
+      grid-template-columns: minmax(280px, 520px);
+      justify-content: center;
+    }
+
     header {
       grid-column: 1 / -1;
       display: flex;
       justify-content: space-between;
       align-items: flex-end;
       gap: 12px;
+    }
+
+    .app.lobby-mode header {
+      justify-content: center;
+      text-align: center;
+      align-items: center;
+    }
+
+    .app.lobby-mode #turnIndicator {
+      display: none;
     }
 
     h1 {
@@ -635,6 +650,7 @@
     const outerAnti = [...outerClockwise].reverse();
     const innerClockwise = buildPerimeterClockwise(BOARD_SIZE, 1);
 
+    const appRoot = document.getElementById("appRoot");
     const boardEl = document.getElementById("board");
     const currentPlayerLabel = document.getElementById("currentPlayerLabel");
     const rollValueEl = document.getElementById("rollValue");
@@ -1143,6 +1159,10 @@
       rollButton.disabled = !state.gameStarted || !isMyTurn();
     }
 
+    function setLobbyMode(enabled) {
+      appRoot.classList.toggle("lobby-mode", enabled);
+    }
+
     function clearMoves() {
       moveOptionsEl.innerHTML = "";
       renderBoard();
@@ -1178,6 +1198,7 @@
       startButton.disabled = true;
       lobbyOnlyPanel.classList.remove("hidden");
       gameSections.forEach(section => section.classList.add("hidden"));
+      setLobbyMode(true);
       lobbyStatusEl.textContent = message || "Create a room or join one to begin.";
     }
 
@@ -1384,6 +1405,7 @@
       renderBoard();
       lobbyOnlyPanel.classList.remove("hidden");
       gameSections.forEach(section => section.classList.add("hidden"));
+      setLobbyMode(true);
     }
 
     function getRoomFromUrl() {
@@ -1439,6 +1461,7 @@
       lastRollEl.textContent = "-";
       lobbyOnlyPanel.classList.add("hidden");
       gameSections.forEach(section => section.classList.remove("hidden"));
+      setLobbyMode(false);
       resetTimer();
       updateUI();
     });
@@ -1644,6 +1667,7 @@
       lobbyStatusEl.textContent = "Game started!";
       lobbyOnlyPanel.classList.add("hidden");
       gameSections.forEach(section => section.classList.remove("hidden"));
+      setLobbyMode(false);
       resetTimer();
       updateUI();
       log("Game started.");
@@ -1718,6 +1742,7 @@
     }
     lobbyOnlyPanel.classList.remove("hidden");
     gameSections.forEach(section => section.classList.add("hidden"));
+    setLobbyMode(true);
 
     window.addEventListener("error", event => {
       socket.emit("client-error", {
