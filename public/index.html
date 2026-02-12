@@ -72,8 +72,8 @@
       width: 100%;
     }
 
-    .app.lobby-mode #turnIndicator {
-      display: none;
+    .app.lobby-mode .header-actions [data-game] {
+      display: none !important;
     }
 
     .app.lobby-mode .subtitle {
@@ -529,11 +529,10 @@
       gap: 8px;
     }
 
-    .leave-game-wrap {
-      grid-column: 1 / -1;
+    .header-actions {
       display: flex;
-      justify-content: flex-end;
-      margin-top: -8px;
+      align-items: center;
+      gap: 8px;
     }
 
     .leave-btn {
@@ -561,12 +560,9 @@
       .board {
         width: min(90vw, 520px);
       }
-      .leave-game-wrap {
-        justify-content: stretch;
-        margin-top: 0;
-      }
       .leave-btn {
-        width: 100%;
+        padding: 7px 10px;
+        font-size: 0.85rem;
       }
     }
   </style>
@@ -578,7 +574,10 @@
         <h1>Ashta Chakkan</h1>
         <div class="subtitle">Classic Chowka Bhara rules with cowrie-shell rolls, safe crosses, and a full outer-to-inner race.</div>
       </div>
-      <div class="pill" id="turnIndicator">Turn 1</div>
+      <div class="header-actions">
+        <div class="pill" id="turnIndicator" data-game>Turn 1</div>
+        <button id="leaveGameButton" type="button" class="leave-btn hidden" data-game>Leave Game</button>
+      </div>
     </header>
 
     <section class="panel lobby-only" id="lobbyOnlyPanel">
@@ -637,10 +636,6 @@
           Sound effects
         </label>
       </div>
-    </section>
-
-    <section class="leave-game-wrap hidden" data-game>
-      <button id="leaveGameButton" type="button" class="leave-btn">Leave Game</button>
     </section>
 
     <section class="board-wrap" data-game>
