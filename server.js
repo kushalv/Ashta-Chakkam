@@ -57,6 +57,30 @@ function findRoomBySocket(socketId) {
   return null;
 }
 
+function removeSocketFromRoom(socketId) {
+  const found = findRoomBySocket(socketId);
+  if (!found) return;
+  const { room } = found;
+  room.players = room.players.filter(p => p.id !== socketId);
+  if (room.players.length === 0) {
+    rooms.delete(room.id);
+    return;
+  }
+  if (room.hostId === socketId) {
+    room.hostId = room.players[0].id;
+  }
+  if (room.currentIndex >= room.players.length) {
+    room.currentIndex = 0;
+  }
+  io.to(room.id).emit("lobby-update", {
+    roomId: room.id,
+    players: room.players,
+    hostId: room.hostId,
+    started: room.started
+  });
+  io.to(room.id).emit("turn-advanced", { currentIndex: room.currentIndex });
+}
+
 io.on("connection", socket => {
   metrics.connections += 1;
   metrics.activeSockets += 1;
@@ -158,6 +182,22 @@ io.on("connection", socket => {
     io.to(room.id).emit("turn-advanced", { currentIndex: room.currentIndex });
   });
 
+  socket.on("game-finished", ({ winnerId, winnerName }) => {
+    const found = findRoomBySocket(socket.id);
+    if (!found) return;
+    const { room } = found;
+    if (!room.started) return;
+    room.started = false;
+    room.currentIndex = 0;
+    io.to(room.id).emit("game-finished", { winnerId, winnerName });
+    io.to(room.id).emit("lobby-update", {
+      roomId: room.id,
+      players: room.players,
+      hostId: room.hostId,
+      started: room.started
+    });
+  });
+
   socket.on("client-error", ({ message, stack, context }) => {
     metrics.clientErrors += 1;
     console.log(`[client-error] ${socket.id} ${message || "unknown"}`);
@@ -165,30 +205,17 @@ io.on("connection", socket => {
     if (context) console.log(`[client-context] ${JSON.stringify(context)}`);
   });
 
+  socket.on("leave-room", () => {
+    const found = findRoomBySocket(socket.id);
+    if (!found) return;
+    socket.leave(found.room.id);
+    removeSocketFromRoom(socket.id);
+  });
+
   socket.on("disconnect", (reason) => {
     metrics.activeSockets = Math.max(0, metrics.activeSockets - 1);
     console.log(`[disconnect] ${socket.id} (${reason})`);
-    const found = findRoomBySocket(socket.id);
-    if (!found) return;
-    const { room } = found;
-    room.players = room.players.filter(p => p.id !== socket.id);
-    if (room.players.length === 0) {
-      rooms.delete(room.id);
-      return;
-    }
-    if (room.hostId === socket.id) {
-      room.hostId = room.players[0].id;
-    }
-    if (room.currentIndex >= room.players.length) {
-      room.currentIndex = 0;
-    }
-    io.to(room.id).emit("lobby-update", {
-      roomId: room.id,
-      players: room.players,
-      hostId: room.hostId,
-      started: room.started
-    });
-    io.to(room.id).emit("turn-advanced", { currentIndex: room.currentIndex });
+    removeSocketFromRoom(socket.id);
   });
 });
 

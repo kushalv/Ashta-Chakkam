@@ -578,6 +578,7 @@
         <span id="timerValue">20s</span>
       </div>
       <button id="rollButton">Roll Cowries</button>
+      <button id="leaveGameButton" type="button">Leave Game</button>
       <div class="move-options" id="moveOptions"></div>
       <div class="toggles">
         <label class="toggle">
@@ -639,6 +640,7 @@
     const rollValueEl = document.getElementById("rollValue");
     const lastRollEl = document.getElementById("lastRoll");
     const rollButton = document.getElementById("rollButton");
+    const leaveGameButton = document.getElementById("leaveGameButton");
     const moveOptionsEl = document.getElementById("moveOptions");
     const logEl = null;
     const turnIndicator = document.getElementById("turnIndicator");
@@ -1147,15 +1149,36 @@
     }
 
     function checkWin(player) {
-      const allHome = (state.tokens[player.id] || []).every(t => t.segment === "home");
-      if (allHome) {
-        alert(`${player.name} wins!`);
-        log(`${player.name} has brought all tokens home.`);
-        rollButton.disabled = true;
-        stopTimer();
-        state.gameOver = true;
-        state.gameStarted = false;
+      return (state.tokens[player.id] || []).every(t => t.segment === "home");
+    }
+
+    function returnToStartPage({ winnerName = null, message = null, emitLeave = false } = {}) {
+      if (winnerName) {
+        alert(`${winnerName} wins!`);
+        log(`${winnerName} has brought all tokens home.`);
       }
+      state.gameOver = true;
+      state.gameStarted = false;
+      state.roll = null;
+      rollValueEl.classList.remove("rolling");
+      rollValueEl.textContent = "-";
+      stopCowrieAnimation(state.lastRoll);
+      clearMoves();
+      stopTimer();
+      if (emitLeave && roomId && !state.localMode) {
+        socket.emit("leave-room");
+      }
+      roomId = null;
+      clientContext.roomId = null;
+      roomCodeEl.textContent = "Room: -";
+      roomInput.value = "";
+      createRoomButton.disabled = false;
+      joinRoomButton.disabled = false;
+      copyLinkButton.disabled = true;
+      startButton.disabled = true;
+      lobbyOnlyPanel.classList.remove("hidden");
+      gameSections.forEach(section => section.classList.add("hidden"));
+      lobbyStatusEl.textContent = message || "Create a room or join one to begin.";
     }
 
     function highlightMoves(movable) {
@@ -1283,7 +1306,17 @@
     function afterMove(result, actingPlayerId) {
       const player = players.find(p => p.id === actingPlayerId);
       renderBoard();
-      if (player) checkWin(player);
+      if (player && checkWin(player)) {
+        if (state.localMode) {
+          returnToStartPage({
+            winnerName: player.name,
+            message: "Game finished. You are back on the start screen."
+          });
+        } else if (actingPlayerId === socket.id) {
+          socket.emit("game-finished", { winnerId: player.id, winnerName: player.name });
+        }
+        return;
+      }
 
       const bonus = state.roll === 4 || state.roll === 8 || result.killed || result.reachedHome;
       state.roll = null;
@@ -1650,6 +1683,20 @@
       stopCowrieAnimation(state.lastRoll);
       resetTimer();
       updateUI();
+    });
+
+    socket.on("game-finished", ({ winnerName }) => {
+      returnToStartPage({
+        winnerName: winnerName || "Player",
+        message: "Game finished. You are back on the start screen."
+      });
+    });
+
+    leaveGameButton.addEventListener("click", () => {
+      returnToStartPage({
+        message: "You left the game.",
+        emitLeave: true
+      });
     });
 
     socket.on("connect_error", error => {
