@@ -65,15 +65,18 @@
       justify-content: center;
       text-align: center;
       align-items: center;
+      flex-direction: column;
       width: 100%;
+      gap: 8px;
     }
 
-    .app.lobby-mode header > div {
+    .app.lobby-mode .title-block {
       width: 100%;
-      max-width: 760px;
+      max-width: 520px;
+      margin: 0 auto;
     }
 
-    .app.lobby-mode .header-actions [data-game] {
+    .app.lobby-mode .header-actions {
       display: none !important;
     }
 
@@ -576,7 +579,7 @@
 <body>
   <div class="app" id="appRoot">
     <header>
-      <div>
+      <div class="title-block">
         <h1>Ashta Chakkan</h1>
         <div class="subtitle">Classic Chowka Bhara rules with cowrie-shell rolls, safe crosses, and a full outer-to-inner race.</div>
       </div>
